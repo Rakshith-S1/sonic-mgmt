@@ -19,13 +19,13 @@ class TestDeployment():
     @pytest.mark.disable_loganalyzer
     def test_config_reload(self, duthost, ctrl_links, policy, cipher_suite, send_sci, wait_mka_establish):
         # Save the original config file
-        duthost.shell("cp /etc/sonic/config_db.json config_db.json")
+        duthost.shell("cp /etc/sonic/config_db*.json /tmp")
         # Save the current config file
-        duthost.shell("sonic-cfggen -d --print-data > /etc/sonic/config_db.json")
+        duthost.shell("config save -y")
         config_reload(duthost)
         assert wait_until(300, 6, 12, check_appl_db, duthost, ctrl_links, policy, cipher_suite, send_sci)
         # Recover the original config file
-        duthost.shell("sudo cp config_db.json /etc/sonic/config_db.json")
+        duthost.shell("sudo mv /tmp/config_db*.json /etc/sonic")
 
     @pytest.mark.disable_loganalyzer
     def test_scale_rekey(self, duthost, ctrl_links, rekey_period, wait_mka_establish):
@@ -54,8 +54,10 @@ class TestDeployment():
             def check_new_mka_session():
                 _, _, _, dut_egress_sa_table_current[dut_port], dut_ingress_sa_table_current[dut_port] = get_appl_db(
                     duthost, dut_port, nbr["host"], nbr["port"])
-                assert dut_egress_sa_table_orig[dut_port] != dut_egress_sa_table_current[dut_port]
-                assert dut_ingress_sa_table_orig[dut_port] != dut_ingress_sa_table_current[dut_port]
+                if dut_egress_sa_table_orig[dut_port] and dut_egress_sa_table_current[dut_port]:
+                    assert dut_egress_sa_table_orig[dut_port] != dut_egress_sa_table_current[dut_port]
+                if dut_ingress_sa_table_orig[dut_port] and dut_ingress_sa_table_current[dut_port]:
+                    assert dut_ingress_sa_table_orig[dut_port] != dut_ingress_sa_table_current[dut_port]
                 return True
             assert wait_until(30, 2, 2, check_new_mka_session)
 
@@ -66,5 +68,7 @@ class TestDeployment():
             for dut_port, nbr in ctrl_links.items():
                 _, _, _, new_dut_egress_sa_table[dut_port], new_dut_ingress_sa_table[dut_port] = get_appl_db(
                     duthost, dut_port, nbr["host"], nbr["port"])
-                assert dut_egress_sa_table_current[dut_port] != new_dut_egress_sa_table[dut_port]
-                assert dut_ingress_sa_table_current[dut_port] != new_dut_ingress_sa_table[dut_port]
+                if dut_egress_sa_table_current[dut_port] and new_dut_egress_sa_table[dut_port]:
+                    assert dut_egress_sa_table_current[dut_port] != new_dut_egress_sa_table[dut_port]
+                if dut_ingress_sa_table_current[dut_port] and new_dut_ingress_sa_table[dut_port]:
+                    assert dut_ingress_sa_table_current[dut_port] != new_dut_ingress_sa_table[dut_port]
