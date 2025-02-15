@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="1" failures="1" skipped="4" tests="58" time="2890.054" timestamp="2025-01-16T13:00:13.761768" hostname="sonic-mgmt"><properties><property name="topology" value="t0" /><property name="testbed" value="vms-kvm-t0" /><property name="timestamp" value="2025-01-16 13:00:30.244307" /><property name="host" value="vlab-01" /><property name="asic" value="vs" /><property name="platform" value="x86_64-kvm_x86_64-r0" /><property name="hwsku" value="Force10-S6000" /><property name="os_version" value="202405.0-dirty-20241026.002901" /></properties><testcase classname="vrf.test_vrf.TestVrfCreateAndBind" name="test_vrf_in_kernel" file="vrf/test_vrf.py" line="612" time="272.492"><properties><property name="start" value="2025-01-16 13:00:24.148389" /><property name="end" value="2025-01-16 13:04:56.641666" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfCreateAndBind" name="test_vrf_in_appl_db" file="vrf/test_vrf.py" line="626" time="12.338"><properties><property name="start" value="2025-01-16 13:04:56.671378" /><property name="end" value="2025-01-16 13:05:09.010554" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfCreateAndBind" name="test_vrf_in_asic_db" file="vrf/test_vrf.py" line="640" time="8.654"><properties><property name="start" value="2025-01-16 13:05:09.012326" /><property name="end" value="2025-01-16 13:05:17.667252" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfNeigh" name="test_ping_lag_neigh" file="vrf/test_vrf.py" line="650" time="11.124"><properties><property name="start" value="2025-01-16 13:05:17.668997" /><property name="end" value="2025-01-16 13:05:28.794507" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfNeigh" name="test_ping_vlan_neigh" file="vrf/test_vrf.py" line="666" time="9.413"><properties><property name="start" value="2025-01-16 13:05:28.796275" /><property name="end" value="2025-01-16 13:05:38.209866" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfNeigh" name="test_vrf1_neigh_ip_fwd" file="vrf/test_vrf.py" line="675" time="8.984"><properties><property name="start" value="2025-01-16 13:05:38.211531" /><property name="end" value="2025-01-16 13:05:47.196554" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfNeigh" name="test_vrf2_neigh_ip_fwd" file="vrf/test_vrf.py" line="684" time="9.598"><properties><property name="start" value="2025-01-16 13:05:47.198188" /><property name="end" value="2025-01-16 13:05:56.797314" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfFib" name="test_show_bgp_summary" file="vrf/test_vrf.py" line="704" time="9.853"><properties><property name="start" value="2025-01-16 13:05:56.799055" /><property name="end" value="2025-01-16 13:06:06.685945" /></properties><failure message="AssertionError: 10.0.0.57 should received 6400 route prefixs!">self = &lt;test_vrf.TestVrfFib object at 0x7f7e36895220&gt;, duthosts = [&lt;MultiAsicSonicHost vlab-01&gt;], rand_one_dut_hostname = 'vlab-01'
+cfg_facts = {'AAA': {'accounting': {'login': 'tacacs+,local'}, 'authentication': {'login': 'tacacs+'}, 'authorization': {'login': ...'enabled'}, 'eventd': {'available_mem_threshold': '10.0', 'rate_limit_interval': '600', 'state': 'enabled'}, ...}, ...}
+
+    def test_show_bgp_summary(self, duthosts, rand_one_dut_hostname, cfg_facts):
+        duthost = duthosts[rand_one_dut_hostname]
+        props = g_vars['props']
+        route_count = props['podset_number'] * \
+            props['tor_number'] * props['tor_subnet_number']
+    
+        for vrf in cfg_facts['VRF']:
+    
+            bgp_summary_string = duthost.shell(
+                "vtysh -c 'show bgp vrf {} summary json'".format(vrf))['stdout']
+            bgp_summary = json.loads(bgp_summary_string)
+    
+            for info in bgp_summary:
+                for peer, attr in list(bgp_summary[info]['peers'].items()):
+                    prefix_count = attr['pfxRcd']
+                    # skip ipv6 peers under 'ipv4Unicast' and compare only ipv4 peers under 'ipv4Unicast',
+                    # and ipv6 peers under 'ipv6Unicast'
+                    if info == "ipv4Unicast" and attr['idType'] == 'ipv6':
+                        continue
+                    else:
+&gt;                       assert int(prefix_count) == route_count, "%s should received %s route prefixs!" % (
+                            peer, route_count)
+E                       AssertionError: 10.0.0.57 should received 6400 route prefixs!
+
+attr       = {'connectionsDropped': 0, 'connectionsEstablished': 1, 'desc': 'ARISTA01T1', 'idType': 'ipv4', ...}
+bgp_summary = {'ipv4Unicast': {'as': 65100, 'bestPath': {'multiPathRelax': 'false'}, 'displayedPeers': 4, 'dynamicPeers': 0, ...}, 'ipv6Unicast': {'as': 65100, 'bestPath': {'multiPathRelax': 'false'}, 'displayedPeers': 2, 'dynamicPeers': 0, ...}}
+bgp_summary_string = '{\n"ipv4Unicast":{\n  "routerId":"192.168.0.1",\n  "as":65100,\n  "vrfId":74,\n  "vrfName":"Vrf1",\n  "tableVersion":...  "displayedPeers":2,\n  "totalPeers":2,\n  "dynamicPeers":0,\n  "bestPath":{\n    "multiPathRelax":"false"\n  }\n}\n}'
+cfg_facts  = {'AAA': {'accounting': {'login': 'tacacs+,local'}, 'authentication': {'login': 'tacacs+'}, 'authorization': {'login': ...'enabled'}, 'eventd': {'available_mem_threshold': '10.0', 'rate_limit_interval': '600', 'state': 'enabled'}, ...}, ...}
+duthost    = &lt;MultiAsicSonicHost vlab-01&gt;
+duthosts   = [&lt;MultiAsicSonicHost vlab-01&gt;]
+info       = 'ipv4Unicast'
+peer       = '10.0.0.57'
+prefix_count = 6399
+props      = {'dut_asn': 65100, 'dut_type': 'ToRRouter', 'failure_rate': 0, 'leaf_asn_start': 64600, ...}
+rand_one_dut_hostname = 'vlab-01'
+route_count = 6400
+self       = &lt;test_vrf.TestVrfFib object at 0x7f7e36895220&gt;
+vrf        = 'Vrf1'
+
+vrf/test_vrf.py:725: AssertionError</failure></testcase><testcase classname="vrf.test_vrf.TestVrfFib" name="test_vrf1_fib" file="vrf/test_vrf.py" line="727" time="8.895"><properties><property name="start" value="2025-01-16 13:06:06.688244" /><property name="end" value="2025-01-16 13:06:15.584960" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfFib" name="test_vrf2_fib" file="vrf/test_vrf.py" line="734" time="8.939"><properties><property name="start" value="2025-01-16 13:06:15.586582" /><property name="end" value="2025-01-16 13:06:24.526852" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfIsolation" name="test_neigh_isolate_vrf1_from_vrf2" file="vrf/test_vrf.py" line="756" time="11.522"><properties><property name="start" value="2025-01-16 13:06:24.528462" /><property name="end" value="2025-01-16 13:06:36.052078" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfIsolation" name="test_neigh_isolate_vrf2_from_vrf1" file="vrf/test_vrf.py" line="765" time="9.311"><properties><property name="start" value="2025-01-16 13:06:36.053803" /><property name="end" value="2025-01-16 13:06:45.366132" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfIsolation" name="test_fib_isolate_vrf1_from_vrf2" file="vrf/test_vrf.py" line="774" time="9.352"><properties><property name="start" value="2025-01-16 13:06:45.367794" /><property name="end" value="2025-01-16 13:06:54.720651" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfIsolation" name="test_fib_isolate_vrf2_from_vrf1" file="vrf/test_vrf.py" line="783" time="9.216"><properties><property name="start" value="2025-01-16 13:06:54.722253" /><property name="end" value="2025-01-16 13:07:03.939500" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfAclRedirect" name="test_origin_ports_recv_no_pkts_v4" file="vrf/test_vrf.py" line="875" time="0.488"><properties><property name="start" value="2025-01-16 13:07:03.943261" /><property name="end" value="2025-01-16 13:07:04.432332" /></properties><skipped type="pytest.skip" message="Switch does not support ACL REDIRECT_ACTION.">/data/sonic-mgmt/tests/vrf/test_vrf.py:876: Switch does not support ACL REDIRECT_ACTION.</skipped></testcase><testcase classname="vrf.test_vrf.TestVrfAclRedirect" name="test_origin_ports_recv_no_pkts_v6" file="vrf/test_vrf.py" line="887" time="0.289"><properties><property name="start" value="2025-01-16 13:07:04.433681" /><property name="end" value="2025-01-16 13:07:04.722916" /></properties><skipped type="pytest.skip" message="Switch does not support ACL REDIRECT_ACTION.">/data/sonic-mgmt/tests/vrf/test_vrf.py:888: Switch does not support ACL REDIRECT_ACTION.</skipped></testcase><testcase classname="vrf.test_vrf.TestVrfAclRedirect" name="test_redirect_to_new_ports_v4" file="vrf/test_vrf.py" line="899" time="0.284"><properties><property name="start" value="2025-01-16 13:07:04.724274" /><property name="end" value="2025-01-16 13:07:05.008566" /></properties><skipped type="pytest.skip" message="Switch does not support ACL REDIRECT_ACTION.">/data/sonic-mgmt/tests/vrf/test_vrf.py:900: Switch does not support ACL REDIRECT_ACTION.</skipped></testcase><testcase classname="vrf.test_vrf.TestVrfAclRedirect" name="test_redirect_to_new_ports_v6" file="vrf/test_vrf.py" line="913" time="0.281"><properties><property name="start" value="2025-01-16 13:07:05.009866" /><property name="end" value="2025-01-16 13:07:05.291984" /></properties><skipped type="pytest.skip" message="Switch does not support ACL REDIRECT_ACTION.">/data/sonic-mgmt/tests/vrf/test_vrf.py:914: Switch does not support ACL REDIRECT_ACTION.</skipped></testcase><testcase classname="vrf.test_vrf.TestVrfLoopbackIntf" name="test_ping_vrf1_loopback" file="vrf/test_vrf.py" line="972" time="10.340"><properties><property name="start" value="2025-01-16 13:07:05.293272" /><property name="end" value="2025-01-16 13:07:15.634421" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfLoopbackIntf" name="test_ping_vrf2_loopback" file="vrf/test_vrf.py" line="988" time="9.587"><properties><property name="start" value="2025-01-16 13:07:15.636166" /><property name="end" value="2025-01-16 13:07:25.224107" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfLoopbackIntf" name="test_bgp_with_loopback" file="vrf/test_vrf.py" line="1102" time="8.987"><properties><property name="start" value="2025-01-16 13:07:25.225903" /><property name="end" value="2025-01-16 13:07:34.259489" /></properties><error message="failed on setup with &quot;tests.common.errors.RunAnsibleModuleFail: run module shell failed, Ansible Results =&gt;&#10;failed = True&#10;changed = True&#10;rc = 1&#10;cmd = vtysh -c 'config terminal' -c 'router bgp 65444'&#10;start = 2025-01-16 13:07:29.355591&#10;end = 2025-01-16 13:07:29.472754&#10;delta = 0:00:00.117163&#10;msg = non-zero return code&#10;invocation = {'module_args': {'_raw_params': &quot;vtysh -c 'config terminal' -c 'router bgp 65444'&quot;, '_uses_shell': True, 'warn': False, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}&#10;_ansible_no_log = None&#10;stdout =&#10;BGP is already running; AS is 65100stderr =&quot;">self = &lt;test_vrf.TestVrfLoopbackIntf object at 0x7f7e367367c0&gt;, duthosts = [&lt;MultiAsicSonicHost vlab-01&gt;]
+rand_one_dut_hostname = 'vlab-01', ptfhost = &lt;tests.common.devices.ptf.PTFHost object at 0x7f7e344c5190&gt;
+cfg_facts = {'AAA': {'accounting': {'login': 'tacacs+,local'}, 'authentication': {'login': 'tacacs+'}, 'authorization': {'login': ...'enabled'}, 'eventd': {'available_mem_threshold': '10.0', 'rate_limit_interval': '600', 'state': 'enabled'}, ...}, ...}
+
+    @pytest.fixture
+    def setup_bgp_with_loopback(self, duthosts, rand_one_dut_hostname, ptfhost, cfg_facts):
+        duthost = duthosts[rand_one_dut_hostname]
+    
+        # ----------- Setup ----------------
+    
+        # FIXME Create a dummy bgp session.
+        # Workaroud to overcome the bgp socket issue.
+        # When there are only vrf bgp sessions and
+        # net.ipv4.tcp_l3mdev_accept=1, bgpd(7.0) does
+        # not create bgp socket for sessions.
+&gt;       duthost.shell("vtysh -c 'config terminal' -c 'router bgp 65444'")
+
+cfg_facts  = {'AAA': {'accounting': {'login': 'tacacs+,local'}, 'authentication': {'login': 'tacacs+'}, 'authorization': {'login': ...'enabled'}, 'eventd': {'available_mem_threshold': '10.0', 'rate_limit_interval': '600', 'state': 'enabled'}, ...}, ...}
+duthost    = &lt;MultiAsicSonicHost vlab-01&gt;
+duthosts   = [&lt;MultiAsicSonicHost vlab-01&gt;]
+ptfhost    = &lt;tests.common.devices.ptf.PTFHost object at 0x7f7e344c5190&gt;
+rand_one_dut_hostname = 'vlab-01'
+self       = &lt;test_vrf.TestVrfLoopbackIntf object at 0x7f7e367367c0&gt;
+
+vrf/test_vrf.py:1016: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+common/devices/multi_asic.py:135: in _run_on_asics
+    return getattr(self.sonichost, self.multi_asic_attr)(*module_args, **complex_args)
+        complex_args = {}
+        module_args = ("vtysh -c 'config terminal' -c 'router bgp 65444'",)
+        self       = &lt;MultiAsicSonicHost vlab-01&gt;
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;SonicHost vlab-01&gt;, module_args = ["vtysh -c 'config terminal' -c 'router bgp 65444'"], complex_args = {}
+previous_frame = &lt;frame at 0x7f7e36904610, file '/data/sonic-mgmt/tests/common/devices/multi_asic.py', line 135, code _run_on_asics&gt;
+filename = '/data/sonic-mgmt/tests/common/devices/multi_asic.py', line_number = 135, function_name = '_run_on_asics'
+lines = ['            return getattr(self.sonichost, self.multi_asic_attr)(*module_args, **complex_args)\n'], index = 0, verbose = True
+module_ignore_errors = False, module_async = False
+
+    def _run(self, *module_args, **complex_args):
+    
+        previous_frame = inspect.currentframe().f_back
+        filename, line_number, function_name, lines, index = inspect.getframeinfo(previous_frame)
+    
+        verbose = complex_args.pop('verbose', True)
+    
+        if verbose:
+            logger.debug(
+                "{}::{}#{}: [{}] AnsibleModule::{}, args={}, kwargs={}".format(
+                    filename,
+                    function_name,
+                    line_number,
+                    self.hostname,
+                    self.module_name,
+                    json.dumps(module_args, cls=AnsibleHostBase.CustomEncoder),
+                    json.dumps(complex_args, cls=AnsibleHostBase.CustomEncoder)
+                )
+            )
+        else:
+            logger.debug(
+                "{}::{}#{}: [{}] AnsibleModule::{} executing...".format(
+                    filename,
+                    function_name,
+                    line_number,
+                    self.hostname,
+                    self.module_name
+                )
+            )
+    
+        module_ignore_errors = complex_args.pop('module_ignore_errors', False)
+        module_async = complex_args.pop('module_async', False)
+    
+        if module_async:
+            def run_module(module_args, complex_args):
+                return self.module(*module_args, **complex_args)[self.hostname]
+            pool = ThreadPool()
+            result = pool.apply_async(run_module, (module_args, complex_args))
+            return pool, result
+    
+        module_args = json.loads(json.dumps(module_args, cls=AnsibleHostBase.CustomEncoder))
+        complex_args = json.loads(json.dumps(complex_args, cls=AnsibleHostBase.CustomEncoder))
+        res = self.module(*module_args, **complex_args)[self.hostname]
+    
+        if verbose:
+            logger.debug(
+                "{}::{}#{}: [{}] AnsibleModule::{} Result =&gt; {}".format(
+                    filename,
+                    function_name,
+                    line_number,
+                    self.hostname,
+                    self.module_name, json.dumps(res, cls=AnsibleHostBase.CustomEncoder)
+                )
+            )
+        else:
+            logger.debug(
+                "{}::{}#{}: [{}] AnsibleModule::{} done, is_failed={}, rc={}".format(
+                    filename,
+                    function_name,
+                    line_number,
+                    self.hostname,
+                    self.module_name,
+                    res.is_failed,
+                    res.get('rc', None)
+                )
+            )
+    
+        if (res.is_failed or 'exception' in res) and not module_ignore_errors:
+&gt;           raise RunAnsibleModuleFail("run module {} failed".format(self.module_name), res)
+E           tests.common.errors.RunAnsibleModuleFail: run module shell failed, Ansible Results =&gt;
+E           failed = True
+E           changed = True
+E           rc = 1
+E           cmd = vtysh -c 'config terminal' -c 'router bgp 65444'
+E           start = 2025-01-16 13:07:29.355591
+E           end = 2025-01-16 13:07:29.472754
+E           delta = 0:00:00.117163
+E           msg = non-zero return code
+E           invocation = {'module_args': {'_raw_params': "vtysh -c 'config terminal' -c 'router bgp 65444'", '_uses_shell': True, 'warn': False, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}
+E           _ansible_no_log = None
+E           stdout =
+E           BGP is already running; AS is 65100stderr =
+
+complex_args = {}
+filename   = '/data/sonic-mgmt/tests/common/devices/multi_asic.py'
+function_name = '_run_on_asics'
+index      = 0
+line_number = 135
+lines      = ['            return getattr(self.sonichost, self.multi_asic_attr)(*module_args, **complex_args)\n']
+module_args = ["vtysh -c 'config terminal' -c 'router bgp 65444'"]
+module_async = False
+module_ignore_errors = False
+previous_frame = &lt;frame at 0x7f7e36904610, file '/data/sonic-mgmt/tests/common/devices/multi_asic.py', line 135, code _run_on_asics&gt;
+res        = {'failed': True, 'changed': True, 'stdout': 'BGP is already running; AS is 65100', 'stderr': '', 'rc': 1, 'cmd': "vtys... 'stdin': None}}, 'stdout_lines': ['BGP is already running; AS is 65100'], 'stderr_lines': [], '_ansible_no_log': None}
+self       = &lt;SonicHost vlab-01&gt;
+verbose    = True
+
+common/devices/base.py:131: RunAnsibleModuleFail</error></testcase><testcase classname="vrf.test_vrf.TestVrfWarmReboot" name="test_vrf_swss_warm_reboot" file="vrf/test_vrf.py" line="1137" time="163.933"><properties><property name="start" value="2025-01-16 13:07:34.262290" /><property name="end" value="2025-01-16 13:10:18.196418" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfWarmReboot" name="test_vrf_system_warm_reboot" file="vrf/test_vrf.py" line="1188" time="411.050"><properties><property name="start" value="2025-01-16 13:10:18.199778" /><property name="end" value="2025-01-16 13:17:09.251044" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfCapacity" name="test_ping" file="vrf/test_vrf.py" line="1449" time="398.143"><properties><property name="start" value="2025-01-16 13:17:09.254669" /><property name="end" value="2025-01-16 13:23:47.399369" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfCapacity" name="test_ip_fwd" file="vrf/test_vrf.py" line="1464" time="227.915"><properties><property name="start" value="2025-01-16 13:23:47.407554" /><property name="end" value="2025-01-16 13:27:35.324515" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfUnbindIntf" name="test_pc1_ip_addr_flushed" file="vrf/test_vrf.py" line="1525" time="16.664"><properties><property name="start" value="2025-01-16 13:27:35.326674" /><property name="end" value="2025-01-16 13:27:51.991662" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfUnbindIntf" name="test_pc1_neigh_flushed" file="vrf/test_vrf.py" line="1534" time="9.824"><properties><property name="start" value="2025-01-16 13:27:51.993360" /><property name="end" value="2025-01-16 13:28:01.818151" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfUnbindIntf" name="test_pc1_neigh_flushed_by_traffic" file="vrf/test_vrf.py" line="1550" time="10.416"><properties><property name="start" value="2025-01-16 13:28:01.819742" /><property name="end" value="2025-01-16 13:28:12.237786" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfUnbindIntf" name="test_pc1_routes_flushed" file="vrf/test_vrf.py" line="1567" time="10.174"><properties><property name="start" value="2025-01-16 13:28:12.239472" /><property name="end" value="2025-01-16 13:28:22.414709" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfUnbindIntf" name="test_pc2_neigh" file="vrf/test_vrf.py" line="1580" time="9.690"><properties><property name="start" value="2025-01-16 13:28:22.416357" /><property name="end" value="2025-01-16 13:28:32.107771" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfUnbindIntf" name="test_pc2_fib" file="vrf/test_vrf.py" line="1595" time="9.701"><properties><property name="start" value="2025-01-16 13:28:32.109488" /><property name="end" value="2025-01-16 13:28:41.811386" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfUnbindIntf" name="test_pc1_neigh_after_rebind" file="vrf/test_vrf.py" line="1606" time="16.370"><properties><property name="start" value="2025-01-16 13:28:41.813059" /><property name="end" value="2025-01-16 13:28:58.184631" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfUnbindIntf" name="test_vrf1_fib_after_rebind" file="vrf/test_vrf.py" line="1617" time="9.987"><properties><property name="start" value="2025-01-16 13:28:58.189475" /><property name="end" value="2025-01-16 13:29:08.177828" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfDeletion" name="test_pc1_ip_addr_flushed" file="vrf/test_vrf.py" line="1679" time="18.878"><properties><property name="start" value="2025-01-16 13:29:08.179459" /><property name="end" value="2025-01-16 13:29:27.058399" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfDeletion" name="test_pc2_ip_addr_flushed" file="vrf/test_vrf.py" line="1685" time="9.970"><properties><property name="start" value="2025-01-16 13:29:27.060227" /><property name="end" value="2025-01-16 13:29:37.031803" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfDeletion" name="test_vlan1000_ip_addr_flushed" file="vrf/test_vrf.py" line="1691" time="10.341"><properties><property name="start" value="2025-01-16 13:29:37.033402" /><property name="end" value="2025-01-16 13:29:47.375296" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfDeletion" name="test_loopback0_ip_addr_flushed" file="vrf/test_vrf.py" line="1696" time="10.673"><properties><property name="start" value="2025-01-16 13:29:47.376908" /><property name="end" value="2025-01-16 13:29:58.051599" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfDeletion" name="test_vrf1_neighs_flushed" file="vrf/test_vrf.py" line="1701" time="9.377"><properties><property name="start" value="2025-01-16 13:29:58.053401" /><property name="end" value="2025-01-16 13:30:07.432529" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfDeletion" name="test_vrf1_neighs_flushed_by_traffic" file="vrf/test_vrf.py" line="1707" time="9.826"><properties><property name="start" value="2025-01-16 13:30:07.434225" /><property name="end" value="2025-01-16 13:30:17.261605" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfDeletion" name="test_vrf1_routes_flushed" file="vrf/test_vrf.py" line="1715" time="10.453"><properties><property name="start" value="2025-01-16 13:30:17.263217" /><property name="end" value="2025-01-16 13:30:27.720178" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfDeletion" name="test_vrf2_neigh" file="vrf/test_vrf.py" line="1723" time="9.633"><properties><property name="start" value="2025-01-16 13:30:27.721913" /><property name="end" value="2025-01-16 13:30:37.355894" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfDeletion" name="test_vrf2_fib" file="vrf/test_vrf.py" line="1730" time="9.888"><properties><property name="start" value="2025-01-16 13:30:37.357817" /><property name="end" value="2025-01-16 13:30:47.247384" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfDeletion" name="test_vrf1_neigh_after_restore" file="vrf/test_vrf.py" line="1737" time="25.381"><properties><property name="start" value="2025-01-16 13:30:47.249310" /><property name="end" value="2025-01-16 13:31:12.631645" /></properties></testcase><testcase classname="vrf.test_vrf.TestVrfDeletion" name="test_vrf1_fib_after_resotre" file="vrf/test_vrf.py" line="1745" time="212.911"><properties><property name="start" value="2025-01-16 13:31:12.636784" /><property name="end" value="2025-01-16 13:34:45.548976" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrSrcMac" name="test_vrf_src_mac_cfg" file="vrf/test_vrf_attr.py" line="53" time="469.779"><properties><property name="start" value="2025-01-16 13:34:45.551672" /><property name="end" value="2025-01-16 13:42:35.331748" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrSrcMac" name="test_vrf1_neigh_with_default_router_mac" file="vrf/test_vrf_attr.py" line="60" time="10.123"><properties><property name="start" value="2025-01-16 13:42:35.350418" /><property name="end" value="2025-01-16 13:42:45.475032" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrSrcMac" name="test_vrf1_neigh_with_new_router_mac" file="vrf/test_vrf_attr.py" line="69" time="9.804"><properties><property name="start" value="2025-01-16 13:42:45.476708" /><property name="end" value="2025-01-16 13:42:55.282176" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrSrcMac" name="test_vrf2_neigh_with_default_router_mac" file="vrf/test_vrf_attr.py" line="84" time="11.143"><properties><property name="start" value="2025-01-16 13:42:55.283847" /><property name="end" value="2025-01-16 13:43:06.428029" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrTTL" name="test_vrf1_drop_pkts_with_ttl_1" file="vrf/test_vrf_attr.py" line="113" time="13.793"><properties><property name="start" value="2025-01-16 13:43:06.429562" /><property name="end" value="2025-01-16 13:43:20.223699" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrTTL" name="test_vrf1_fwd_pkts_with_ttl_2" file="vrf/test_vrf_attr.py" line="123" time="9.841"><properties><property name="start" value="2025-01-16 13:43:20.225589" /><property name="end" value="2025-01-16 13:43:30.068091" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrTTL" name="test_vrf2_fwd_pkts_with_ttl_1" file="vrf/test_vrf_attr.py" line="132" time="11.162"><properties><property name="start" value="2025-01-16 13:43:30.069799" /><property name="end" value="2025-01-16 13:43:41.233364" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrIpAction" name="test_vrf1_drop_pkts_with_ip_opt" file="vrf/test_vrf_attr.py" line="162" time="13.873"><properties><property name="start" value="2025-01-16 13:43:41.234869" /><property name="end" value="2025-01-16 13:43:55.109037" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrIpAction" name="test_vrf1_fwd_pkts_without_ip_opt" file="vrf/test_vrf_attr.py" line="174" time="9.786"><properties><property name="start" value="2025-01-16 13:43:55.110845" /><property name="end" value="2025-01-16 13:44:04.897733" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrIpAction" name="test_vrf2_fwd_pkts_with_ip_opt" file="vrf/test_vrf_attr.py" line="185" time="11.017"><properties><property name="start" value="2025-01-16 13:44:04.899359" /><property name="end" value="2025-01-16 13:44:15.917878" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrIpState" name="test_vrf1_drop_v4" file="vrf/test_vrf_attr.py" line="217" time="13.878"><properties><property name="start" value="2025-01-16 13:44:15.919414" /><property name="end" value="2025-01-16 13:44:29.799021" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrIpState" name="test_vrf1_forward_v6" file="vrf/test_vrf_attr.py" line="228" time="9.989"><properties><property name="start" value="2025-01-16 13:44:29.800893" /><property name="end" value="2025-01-16 13:44:39.790924" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrIpState" name="test_vrf2_forward_v4" file="vrf/test_vrf_attr.py" line="238" time="9.509"><properties><property name="start" value="2025-01-16 13:44:39.792632" /><property name="end" value="2025-01-16 13:44:49.302628" /></properties></testcase><testcase classname="vrf.test_vrf_attr.TestVrfAttrIpState" name="test_vrf2_drop_v6" file="vrf/test_vrf_attr.py" line="248" time="214.508"><properties><property name="start" value="2025-01-16 13:44:49.304299" /><property name="end" value="2025-01-16 13:48:23.813140" /></properties></testcase></testsuite></testsuites>
